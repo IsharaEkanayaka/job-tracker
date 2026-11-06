@@ -74,6 +74,8 @@ Defaults live in `backend/config.py`. To change them, copy `.env.example` to `.e
 | `ROOSTER_LIMIT` | `20` | Jobs per request |
 | `ROOSTER_MAX_PAGES` | `5` | Requests per fetch (raise to 30 once for a full backfill) |
 | `DATABASE_URL` | `jobs.db` in the project root | Database |
+| `ITPRO_CATEGORY_URL` | ITPro software engineering category | Empty value turns the collector off |
+| `ITPRO_MAX_PAGES` | `30` | Maximum ITPro category pages per fetch |
 
 ## Filtering
 
@@ -99,6 +101,7 @@ python -m backend.rescore --apply    # save the changes (nothing is deleted)
 ## Roadmap
 
 - [ ] Rooster.jobs collector (`backend/collectors/rooster.py`)
+- [x] ITPro.lk software engineering collector (`backend/collectors/itpro_lk.py`)
 - [ ] More remote sources (RemoteOK, We Work Remotely, HN "Who is hiring")
 - [ ] Telegram bot to forward WhatsApp posts + LLM parser for messy text
 - [x] Web UI (React): stage pipeline, filters, notes, add-job form

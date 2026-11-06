@@ -23,6 +23,12 @@ REQUEST_TIMEOUT = 20
 REQUEST_DELAY_SECONDS = 1.5  # pause between paged requests
 USER_AGENT = "job-tracker/0.1 (personal project)"
 
+# --- ITPro.lk ---
+ITPRO_CATEGORY_URL = os.getenv(
+    "ITPRO_CATEGORY_URL", "https://itpro.lk/jobs/software-engineering/"
+)
+ITPRO_MAX_PAGES = int(os.getenv("ITPRO_MAX_PAGES", "30"))
+
 # --- Rooster.jobs (the JSON search endpoint the website itself uses) ---
 # Set ROOSTER_API_URL= (empty) in .env to disable this collector.
 ROOSTER_API_URL = os.getenv("ROOSTER_API_URL", "https://api.rooster.jobs/jobSearch/jobs/search")

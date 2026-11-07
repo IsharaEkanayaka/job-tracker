@@ -35,7 +35,7 @@ ROOSTER_API_URL = os.getenv("ROOSTER_API_URL", "https://api.rooster.jobs/jobSear
 # Search terms are combined with OR. Comma-separated.
 ROOSTER_QUERY = _list(
     "ROOSTER_QUERY",
-    "software engineer,developer,backend,frontend,full stack,embedded,firmware,devops",
+    "software engineer,developer,backend,frontend,full stack,embedded,firmware,devops,ai",
 )
 ROOSTER_COUNTRY = os.getenv("ROOSTER_COUNTRY", "Sri Lanka")
 ROOSTER_FILTERS = os.getenv(

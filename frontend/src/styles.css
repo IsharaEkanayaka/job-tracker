@@ -92,6 +92,10 @@ h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
 }
 .filters input[type="search"] { flex: 1 1 220px; min-width: 0; }
 .check { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; cursor: pointer; }
+.date-range, .custom-dates { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 14px; }
+.date-range select, .custom-dates input { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 10px; }
+.custom-dates { gap: 8px; }
+.custom-dates label { display: inline-flex; gap: 4px; align-items: center; }
 
 .skipped-toggle {
   margin-left: auto; border: 1px solid var(--line); background: transparent; color: var(--muted);

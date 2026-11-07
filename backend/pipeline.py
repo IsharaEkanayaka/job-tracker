@@ -37,7 +37,10 @@ def save_raw_job(db: Session, raw: RawJob, source: str) -> Job | None:
     return job
 
 
-def run_collector(db: Session, collector: BaseCollector) -> ScrapeRun:
+def run_collector(
+    db: Session,
+    collector: BaseCollector,
+) -> ScrapeRun:
     """Run one collector. A failure is logged in scrape_runs and never raised,
     so one broken source can't break the others."""
     run = ScrapeRun(source=collector.name)
@@ -63,5 +66,8 @@ def run_collector(db: Session, collector: BaseCollector) -> ScrapeRun:
     return run
 
 
-def run_all(db: Session, collectors: list[BaseCollector]) -> list[ScrapeRun]:
+def run_all(
+    db: Session,
+    collectors: list[BaseCollector],
+) -> list[ScrapeRun]:
     return [run_collector(db, c) for c in collectors]

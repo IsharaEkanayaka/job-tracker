@@ -20,7 +20,11 @@ async function request(path, options = {}) {
 
 export const getStats = (signal) => request("/stats", { signal });
 
-export function getJobs({ stage, q, source, remote, showAll }, offset, signal) {
+export function getJobs(
+  { stage, q, source, remote, showAll, dateStart, dateEnd },
+  offset,
+  signal,
+) {
   const tracked = stage !== "none";
   const params = new URLSearchParams({
     limit: PAGE_SIZE,
@@ -31,6 +35,8 @@ export function getJobs({ stage, q, source, remote, showAll }, offset, signal) {
   if (q) params.set("q", q);
   if (source) params.set("source", source);
   if (remote) params.set("remote", "true");
+  if (dateStart) params.set("posted_from", dateStart);
+  if (dateEnd) params.set("posted_to", dateEnd);
   return request(`/jobs?${params}`, { signal });
 }
 

@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, time, timezone, timedelta
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -54,6 +54,8 @@ def list_jobs(
     software_only: bool = True,
     remote: bool | None = None,
     status: str | None = Query(None, description="none | any | saved | applied | ..."),
+    posted_from: date | None = Query(None, description="Published on or after this date"),
+    posted_to: date | None = Query(None, description="Published on or before this date"),
     limit: int = Query(50, le=200),
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -74,6 +76,14 @@ def list_jobs(
     if q:
         like = f"%{q}%"
         stmt = stmt.where(Job.title.ilike(like) | Job.company.ilike(like))
+    if posted_from and posted_to and posted_from > posted_to:
+        raise HTTPException(422, "posted_from must be on or before posted_to")
+    if posted_from:
+        stmt = stmt.where(Job.posted_at >= datetime.combine(posted_from, time.min))
+    if posted_to:
+        stmt = stmt.where(
+            Job.posted_at < datetime.combine(posted_to + timedelta(days=1), time.min)
+        )
     # Newest first by the job's own posted date (falls back to when we fetched it).
     stmt = stmt.order_by(
         func.coalesce(Job.posted_at, Job.fetched_at).desc(), Job.id.desc()

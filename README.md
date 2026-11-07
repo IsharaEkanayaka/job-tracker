@@ -53,7 +53,9 @@ Frontend, production. FastAPI serves the built app itself:
 cd frontend && npm run build         # then open http://127.0.0.1:8000
 ```
 
-Other commands: `python -m backend.scheduler` (collect every 6 hours), `pytest` (backend tests).
+Other commands: `python -m backend.scheduler` (background worker: collect at startup and every
+6 hours), `pytest` (backend tests). The worker stores all jobs it can collect, including their
+published dates. The UI date selector queries these saved jobs and does not trigger a new fetch.
 
 ## Frontend
 
@@ -97,6 +99,12 @@ python -m backend.rescore --apply    # save the changes (nothing is deleted)
 | PUT | `/jobs/{id}/application` | Set status: saved/applied/interview/rejected/offer |
 | GET | `/stats` | Jobs per source, applications per status |
 | POST | `/collect/run` | Run all collectors now |
+| GET | `/jobs?posted_from=YYYY-MM-DD&posted_to=YYYY-MM-DD` | Filter saved jobs by published date |
+
+The UI date selector supports all dates, the last 1, 2, or 7 days, the last 2 weeks,
+the last month, and a custom inclusive date range. It filters saved jobs and does not
+delete them. Use the **Fetch new jobs** button for an immediate worker run; normally
+`python -m backend.scheduler` keeps ingestion running every 6 hours.
 
 ## Roadmap
 

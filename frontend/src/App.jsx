@@ -22,11 +22,14 @@ export default function App() {
   const [fetching, setFetching] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [version, setVersion] = useState(0);
+  const [datePreset, setDatePreset] = useState("all");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
 
   const debouncedQ = useDebounce(q);
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
   const say = useCallback((text, error = false) => setMessage({ text, error }), []);
-  const filters = { stage, q: debouncedQ, source, remote, showAll };
+  const filters = { stage, q: debouncedQ, source, remote, showAll, dateStart, dateEnd };
 
   // Stage counts and source list: reload after any change.
   useEffect(() => {
@@ -41,7 +44,7 @@ export default function App() {
   useEffect(() => {
     const ac = new AbortController();
     setLoading(true);
-    getJobs({ stage, q: debouncedQ, source, remote, showAll }, 0, ac.signal)
+    getJobs(filters, 0, ac.signal)
       .then((data) => {
         setJobs(data);
         setHasMore(data.length === PAGE_SIZE);
@@ -49,7 +52,7 @@ export default function App() {
       .catch((e) => e.name !== "AbortError" && say(`Could not load jobs: ${e.message}`, true))
       .finally(() => !ac.signal.aborted && setLoading(false));
     return () => ac.abort();
-  }, [stage, debouncedQ, source, remote, showAll, version, say]);
+  }, [stage, debouncedQ, source, remote, showAll, dateStart, dateEnd, version, say]);
 
   async function showMore() {
     try {
@@ -63,7 +66,7 @@ export default function App() {
 
   async function fetchJobs() {
     setFetching(true);
-    say("Fetching jobs…");
+    say("Running collectors…");
     try {
       const runs = await runCollectors();
       const failed = runs.some((r) => r.status !== "ok");
@@ -114,6 +117,9 @@ export default function App() {
         skipped={stage === "skipped"}
         skippedCount={stats?.applications_per_status?.skipped ?? 0}
         onToggleSkipped={() => setStage(stage === "skipped" ? "none" : "skipped")}
+        datePreset={datePreset} onDatePreset={setDatePreset}
+        dateStart={dateStart} onDateStart={setDateStart}
+        dateEnd={dateEnd} onDateEnd={setDateEnd}
       />
 
       <JobList

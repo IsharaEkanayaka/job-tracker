@@ -30,6 +30,48 @@ def test_index_serves_ui(client):
     assert "Job Tracker" in r.text  # API hint page or built UI
 
 
+def test_job_list_rejects_reversed_date_range(client):
+    response = client.get("/jobs", params={
+        "posted_from": "2026-11-08",
+        "posted_to": "2026-11-07",
+    })
+    assert response.status_code == 422
+
+
+def test_job_list_filters_by_inclusive_published_date(db, client):
+    from datetime import datetime
+    from backend.collectors.base import RawJob
+    from backend.pipeline import save_raw_job
+
+    for title, posted in [
+        ("Before", datetime(2026, 11, 1)),
+        ("Start", datetime(2026, 11, 2)),
+        ("End", datetime(2026, 11, 7)),
+        ("After", datetime(2026, 11, 8)),
+    ]:
+        save_raw_job(
+            db,
+            RawJob(
+                title=f"{title} Python Developer",
+                company=title,
+                url=title,
+                description="Python SQL Git Docker API",
+                posted_at=posted,
+            ),
+            "test",
+        )
+    db.commit()
+
+    jobs = client.get("/jobs", params={
+        "posted_from": "2026-11-02",
+        "posted_to": "2026-11-07",
+    }).json()
+    assert [job["title"] for job in jobs] == [
+        "End Python Developer",
+        "Start Python Developer",
+    ]
+
+
 def test_stage_filter_and_new_count(client):
     a = client.post("/jobs/manual", json={"title": "Python Developer", "company": "A",
                                           "description": "Python SQL Git Docker API"}).json()

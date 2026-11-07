@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 
 from backend.collectors.base import BaseCollector, RawJob
@@ -53,3 +55,26 @@ def test_remotive_parse():
     jobs = RemotiveCollector.parse(payload)
     assert jobs[0].company == "Acme" and jobs[0].remote is True
     assert jobs[0].posted_at is not None
+
+
+def test_worker_stores_all_collected_jobs(db):
+    class DatedCollector(BaseCollector):
+        name = "dated"
+
+        def fetch(self):
+            return [
+                RawJob(title="Before", company="A", url="a",
+                       posted_at=datetime(2026, 11, 1)),
+                RawJob(title="Inside", company="B", url="b",
+                       posted_at=datetime(2026, 11, 7)),
+                RawJob(title="After", company="C", url="c",
+                       posted_at=datetime(2026, 11, 8)),
+                RawJob(title="Unknown", company="D", url="d"),
+            ]
+
+    run = run_collector(db, DatedCollector())
+
+    assert run.jobs_found == 4 and run.jobs_new == 4
+    assert {job.title for job in db.scalars(select(Job)).all()} == {
+        "Before", "Inside", "After", "Unknown"
+    }

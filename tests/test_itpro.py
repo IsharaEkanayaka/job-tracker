@@ -8,6 +8,8 @@ PAGE_ONE = """
   <a class="jcl" href="/jobs/python-developer/">View</a>
   <h2 class="jc-title"> Python Developer </h2>
   <span class="jc-company">Acme Ltd</span>
+  <span class="jc-company-info"><span class="la">Colombo</span></span>
+  <time class="time-posted" datetime="2026-11-07T10:00:00+05:30">Today</time>
 </article>
 <article class="job-card" id="job-2">
   <a class="jcl" href="https://itpro.lk/jobs/frontend-engineer/">View</a>
@@ -47,6 +49,8 @@ def test_fetch_maps_cards_and_stops_at_empty_page(monkeypatch):
         "Backend Engineer",
     ]
     assert jobs[0].company == "Acme Ltd"
+    assert jobs[0].location == "Colombo"
+    assert jobs[0].posted_at is not None
     assert jobs[0].url == "https://itpro.lk/jobs/python-developer/"
 
 

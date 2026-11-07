@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 from urllib.parse import urljoin
 
 import httpx
@@ -84,6 +85,14 @@ class ItProCollector(BaseCollector):
                     "id": card.get("id"),
                     "title": title.get_text(strip=True) if title else None,
                     "company": company.get_text(strip=True) if company else None,
+                    "location": (
+                        card.select_one(".jc-company-info .la").get_text(strip=True)
+                        if card.select_one(".jc-company-info .la") else None
+                    ),
+                    "posted_at": (
+                        card.select_one("time.time-posted").get("datetime")
+                        if card.select_one("time.time-posted") else None
+                    ),
                     "url": urljoin(
                         BASE_URL, link.get("href", "")
                     ) if link else None,
@@ -96,5 +105,16 @@ class ItProCollector(BaseCollector):
         return RawJob(
             title=card.get("title") or "",
             company=card.get("company") or "",
+            location=card.get("location") or "",
             url=card.get("url") or "",
+            posted_at=ItProCollector._parse_datetime(card.get("posted_at")),
         )
+
+    @staticmethod
+    def _parse_datetime(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None

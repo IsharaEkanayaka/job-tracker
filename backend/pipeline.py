@@ -20,6 +20,21 @@ def save_raw_job(db: Session, raw: RawJob, source: str) -> Job | None:
     if not title:
         return None
 
+    if raw.url:
+        existing = db.scalar(
+            select(Job).where(Job.source == source, Job.url == raw.url)
+        )
+        if existing:
+            if raw.posted_at and not existing.posted_at:
+                existing.posted_at = raw.posted_at
+            if location and not existing.location:
+                existing.location = location
+            if company and not existing.company:
+                existing.company = company
+            if raw.description and not existing.description:
+                existing.description = strip_html(raw.description)
+            return None
+
     h = dedupe_hash(title, company, location)
     if db.scalar(select(Job.id).where(Job.dedupe_hash == h)):
         return None

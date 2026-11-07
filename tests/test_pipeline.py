@@ -5,7 +5,7 @@ from sqlalchemy import select
 from backend.collectors.base import BaseCollector, RawJob
 from backend.collectors.remotive import RemotiveCollector
 from backend.db.models import Job, ScrapeRun
-from backend.pipeline import run_collector
+from backend.pipeline import run_collector, save_raw_job
 
 
 class FakeCollector(BaseCollector):
@@ -38,6 +38,28 @@ def test_pipeline_is_idempotent(db):
     run_collector(db, FakeCollector())
     run = run_collector(db, FakeCollector())
     assert run.jobs_new == 0
+
+
+def test_pipeline_deduplicates_same_source_url_when_fields_change(db):
+    first = RawJob(
+        title="Backend Developer",
+        company="Acme",
+        location="",
+        url="https://example.com/job/1",
+        posted_at=datetime(2026, 11, 1),
+    )
+    second = RawJob(
+        title="Backend Developer",
+        company="Acme",
+        location="Colombo",
+        url="https://example.com/job/1",
+        posted_at=datetime(2026, 11, 1),
+    )
+
+    assert save_raw_job(db, first, "source") is not None
+    assert save_raw_job(db, second, "source") is None
+    job = db.scalar(select(Job))
+    assert job.location == "Colombo"
 
 
 def test_failing_collector_is_logged_not_raised(db):

@@ -56,6 +56,8 @@ cd frontend && npm run build         # then open http://127.0.0.1:8000
 Other commands: `python -m backend.scheduler` (background worker: collect at startup and every
 6 hours), `pytest` (backend tests). The worker stores all jobs it can collect, including their
 published dates. The UI date selector queries these saved jobs and does not trigger a new fetch.
+To populate publication dates for older ITPro records, run
+`python -m backend.backfill_itpro_dates` once.
 
 ## Frontend
 

@@ -58,7 +58,9 @@ export default function JobRow({ job, onChanged, onMessage }) {
         </div>
 
         <span className="src">{job.source}</span>
-        <span className="when">{ago(job.posted_at || job.fetched_at)}</span>
+        <span className="when">
+          {job.posted_at ? ago(job.posted_at) : "Published date unavailable"}
+        </span>
 
         <select
           className="stage-select"

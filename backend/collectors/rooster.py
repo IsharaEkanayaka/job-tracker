@@ -7,10 +7,11 @@ import httpx
 from backend.collectors.base import BaseCollector, RawJob
 from backend.config import (
     REQUEST_DELAY_SECONDS, REQUEST_TIMEOUT, ROOSTER_API_URL, ROOSTER_FILTERS,
-    ROOSTER_LIMIT, ROOSTER_MAX_PAGES, ROOSTER_QUERY, USER_AGENT,
+    ROOSTER_QUERY, USER_AGENT,
 )
 
 JOB_URL = "https://rooster.jobs/jobs/{id}"
+PAGE_SIZE = 20
 
 
 class RoosterCollector(BaseCollector):
@@ -25,15 +26,14 @@ class RoosterCollector(BaseCollector):
     name = "rooster"
 
     def __init__(self, url: str = ROOSTER_API_URL, extra: dict | None = None,
-                 limit: int = ROOSTER_LIMIT, max_pages: int = ROOSTER_MAX_PAGES,
+                 retries: int = 3,
                  transport: httpx.BaseTransport | None = None):
         self.url = url
         self.extra = extra if extra is not None else {
             "query": list(ROOSTER_QUERY),
             "filters": self._load_filters(ROOSTER_FILTERS),
         }
-        self.limit = limit
-        self.max_pages = max_pages
+        self.retries = retries
         self.transport = transport  # lets tests inject a fake server
 
     @staticmethod
@@ -49,20 +49,86 @@ class RoosterCollector(BaseCollector):
     def fetch(self) -> list[RawJob]:
         if not self.url:
             raise RuntimeError("ROOSTER_API_URL is not set")
+        if self.retries < 1:
+            raise ValueError("retries must be at least 1")
 
-        jobs: list[RawJob] = []
+        jobs_by_id: dict[object, RawJob] = {}
         with httpx.Client(headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
                           timeout=REQUEST_TIMEOUT, transport=self.transport) as client:
-            for page in range(1, self.max_pages + 1):
-                resp = client.post(self.url, json={**self.extra, "page": page, "limit": self.limit})
-                resp.raise_for_status()
-                batch = self.parse(resp.json())
-                jobs.extend(batch)
-                if len(batch) < self.limit:
-                    break  # last page
-                if page < self.max_pages:
-                    time.sleep(REQUEST_DELAY_SECONDS)
-        return jobs
+            expected_count: int | None = None
+            page = 1
+            while True:
+                payload = self._fetch_page(client, page)
+                body = payload["body"]
+                count = body.get("count")
+                if not isinstance(count, int) or count < 0:
+                    raise ValueError("Rooster response has no valid integer body.count")
+                if expected_count is None:
+                    expected_count = count
+                elif count != expected_count:
+                    raise ValueError(
+                        f"Rooster total changed during download: "
+                        f"{expected_count} -> {count}"
+                    )
+
+                page_data = body["data"]
+                if not page_data:
+                    if len(jobs_by_id) < expected_count:
+                        raise RuntimeError(
+                            f"Rooster download stopped early: received "
+                            f"{len(jobs_by_id)} of {expected_count} jobs"
+                        )
+                    break
+                previous_count = len(jobs_by_id)
+                for item in page_data:
+                    if not isinstance(item, dict) or "id" not in item:
+                        raise ValueError(f"Invalid Rooster job record on page {page}")
+                    jobs_by_id[item["id"]] = self._parse_item(item)
+                if len(jobs_by_id) >= expected_count:
+                    break
+                if len(jobs_by_id) == previous_count:
+                    raise RuntimeError(f"Rooster page {page} contained no new jobs")
+                page += 1
+                time.sleep(REQUEST_DELAY_SECONDS)
+
+            if expected_count is not None and len(jobs_by_id) != expected_count:
+                raise RuntimeError(
+                    f"Rooster download incomplete: received {len(jobs_by_id)} "
+                    f"of {expected_count} jobs"
+                )
+        return list(jobs_by_id.values())
+
+    def _fetch_page(self, client: httpx.Client, page: int) -> dict:
+        payload = {**self.extra, "page": page, "limit": PAGE_SIZE}
+        last_error: Exception | None = None
+        for attempt in range(self.retries):
+            try:
+                response = client.post(self.url, json=payload)
+                response.raise_for_status()
+                result = response.json()
+                body = result.get("body") if isinstance(result, dict) else None
+                if not isinstance(body, dict) or not isinstance(body.get("data"), list):
+                    raise ValueError(
+                        "Unexpected Rooster response shape "
+                        "(no body.data list)"
+                    )
+                return result
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code < 500 and exc.response.status_code not in {408, 429}:
+                    raise
+                last_error = exc
+            except (httpx.RequestError, ValueError) as exc:
+                last_error = exc
+            if attempt + 1 < self.retries:
+                time.sleep(2**attempt)
+        raise RuntimeError(f"Unable to fetch Rooster page {page}: {last_error}") from last_error
+
+    @staticmethod
+    def _parse_item(item: dict) -> RawJob:
+        jobs = RoosterCollector.parse({"body": {"data": [item]}})
+        if not jobs:
+            raise ValueError("Rooster job record has no title")
+        return jobs[0]
 
     @staticmethod
     def parse(payload: dict) -> list[RawJob]:

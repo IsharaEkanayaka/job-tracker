@@ -71,10 +71,10 @@ Defaults live in `backend/config.py`. To change them, copy `.env.example` to `.e
 | Variable | Default | Meaning |
 |---|---|---|
 | `ROOSTER_API_URL` | Rooster search endpoint | Empty value turns the collector off |
-| `ROOSTER_QUERY` | `software engineer,developer,...` | Search terms, combined with OR |
-| `ROOSTER_FILTERS` | `{}` | JSON filters sent to the endpoint |
-| `ROOSTER_LIMIT` | `20` | Jobs per request |
-| `ROOSTER_MAX_PAGES` | `5` | Requests per fetch (raise to 30 once for a full backfill) |
+| `ROOSTER_QUERY` | `software engineer,developer,...` | Software-focused search terms, combined with OR |
+| `ROOSTER_COUNTRY` | `Sri Lanka` | Default country used by the Rooster filter |
+| `ROOSTER_FILTERS` | `{"country":"Sri Lanka"}` | JSON filters sent to the endpoint |
+| — | `20 jobs per API page` | The collector downloads every page reported by Rooster; there is no application limit |
 | `DATABASE_URL` | `jobs.db` in the project root | Database |
 | `ITPRO_CATEGORY_URL` | ITPro software engineering category | Empty value turns the collector off |
 | `ITPRO_MAX_PAGES` | `30` | Maximum ITPro category pages per fetch |

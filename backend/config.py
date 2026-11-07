@@ -37,6 +37,7 @@ ROOSTER_QUERY = _list(
     "ROOSTER_QUERY",
     "software engineer,developer,backend,frontend,full stack,embedded,firmware,devops",
 )
-ROOSTER_FILTERS = os.getenv("ROOSTER_FILTERS", "{}")  # JSON object, e.g. a location filter
-ROOSTER_LIMIT = int(os.getenv("ROOSTER_LIMIT", "20"))  # jobs per request
-ROOSTER_MAX_PAGES = int(os.getenv("ROOSTER_MAX_PAGES", "5"))  # requests per fetch
+ROOSTER_COUNTRY = os.getenv("ROOSTER_COUNTRY", "Sri Lanka")
+ROOSTER_FILTERS = os.getenv(
+    "ROOSTER_FILTERS", f'{{"country": "{ROOSTER_COUNTRY}"}}'
+)  # JSON object

@@ -81,12 +81,12 @@ def test_unconfigured_collector_fails_clearly():
         RoosterCollector(url="").fetch()
 
 
-def _page(ids):
-    return {"body": {"count": 99, "data": [
+def _page(ids, count=None):
+    return {"body": {"count": count if count is not None else len(ids), "data": [
         {"id": i, "title": f"Developer {i}", "description": "Python", "company_name": "Co"} for i in ids]}}
 
 
-def test_fetch_posts_page_and_limit_and_stops_on_short_page(monkeypatch):
+def test_fetch_posts_pages_until_reported_total(monkeypatch):
     monkeypatch.setattr("backend.collectors.rooster.time.sleep", lambda s: None)
     bodies = []
 
@@ -94,22 +94,16 @@ def test_fetch_posts_page_and_limit_and_stops_on_short_page(monkeypatch):
         assert request.method == "POST"
         body = json.loads(request.content)
         bodies.append(body)
-        return httpx.Response(200, json=_page([1, 2] if body["page"] == 1 else [3]))
+        return httpx.Response(200, json=_page(
+            [1, 2] if body["page"] == 1 else [3], count=3
+        ))
 
     c = RoosterCollector(url="https://api.example/search", extra={"keyword": "python"},
-                         limit=2, max_pages=5, transport=httpx.MockTransport(handler))
+                         transport=httpx.MockTransport(handler))
     jobs = c.fetch()
     assert [j.url.rsplit("/", 1)[1] for j in jobs] == ["1", "2", "3"]
-    assert bodies == [{"keyword": "python", "page": 1, "limit": 2},
-                      {"keyword": "python", "page": 2, "limit": 2}]
-
-
-def test_fetch_respects_max_pages(monkeypatch):
-    monkeypatch.setattr("backend.collectors.rooster.time.sleep", lambda s: None)
-    handler = lambda req: httpx.Response(200, json=_page([1, 2]))  # noqa: E731
-    c = RoosterCollector(url="https://api.example/search", extra={}, limit=2, max_pages=3,
-                         transport=httpx.MockTransport(handler))
-    assert len(c.fetch()) == 6
+    assert bodies == [{"keyword": "python", "page": 1, "limit": 20},
+                      {"keyword": "python", "page": 2, "limit": 20}]
 
 
 def test_http_error_is_raised_for_pipeline_to_log():
@@ -132,3 +126,20 @@ def test_default_body_comes_from_config(monkeypatch):
     monkeypatch.setattr("backend.collectors.rooster.ROOSTER_FILTERS", '{"country": "Sri Lanka"}')
     c = RoosterCollector(url="https://api.example/search")
     assert c.extra == {"query": ["python", "rust"], "filters": {"country": "Sri Lanka"}}
+
+
+def test_fetch_downloads_all_reported_pages_and_deduplicates(monkeypatch):
+    monkeypatch.setattr("backend.collectors.rooster.time.sleep", lambda _: None)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        page = json.loads(request.content)["page"]
+        ids = {1: [1, 2], 2: [2, 3]}[page]
+        return httpx.Response(200, json=_page(ids, count=3))
+
+    collector = RoosterCollector(
+        url="https://api.example/search",
+        extra={"query": [], "filters": {"country": "Sri Lanka"}},
+        transport=httpx.MockTransport(handler),
+    )
+    jobs = collector.fetch()
+    assert [job.url.rsplit("/", 1)[1] for job in jobs] == ["1", "2", "3"]
